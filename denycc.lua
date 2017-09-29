@@ -2,21 +2,28 @@
  * waf for goodID
  * @author yf6808
  * @time 2016-06-08
- * ÔÚnginx.confµÄHTTPÖĞ¼ÓÈë
+ * åœ¨nginx.confåŠ å…¥ä»¥ä¸‹é…ç½®
  * lua_shared_dict limit 100m;
  * lua_shared_dict iplimit 20m;
  * lua_shared_dict blockiplimit 50m;
+ * access_by_lua_file /path/denycc.lua;
 --]]
 -------------------------------------------------------------
-SecRuleEngine="on" --¿ªÆôÒıÇæ
-attacklog = "on"  --¿ªÆôÈÕÖ¾
-CCDeny="on"     --cc¹¥»÷¿ª¹Ø
-CCrate="100/10"         --»ùÓÚ½Ó¿ÚµÄ¼ÆÊı ´Î/Ãë
-comCCrate="500/10"      --»ùÓÚÓòÃûµÄ¼ÆÊı ´Î/Ãë
-ipCCrate="800/10"       --»ùÓÚipµÄ¼ÆÊı ´Î/Ãë
-logpath = "/data/logs/waflog/"          --ÈÕÖ¾ÎÄ¼şÂ·¾¶
+SecRuleEngine="on" --å¼€å¯å¼•æ“
+attacklog = "on"  --å¼€å¯æ—¥å¿—
+CCAgent = "on"    --å¼€å¯useragentè¿‡æ»¤
+CCDeny="on"     --ccåŠŸèƒ½æ˜¯å¦å¼€å¯
+CCrate="100/10"         --æ ¹æ®æ¥å£é¢‘ç‡ æ¬¡/ç§’
+comCCrate="500/10"      --æ ¹æ®åŸŸåé¢‘ç‡ æ¬¡/ç§’
+ipCCrate="800/10"       --æ ¹æ®ipé¢‘ç‡ æ¬¡/ç§’
+logpath = "/data/logs/waflog/"          --æ—¥å¿—è·¯å¾„
 -------------------------------------------------
 ccdenyrules={"ccdeny1","ccdeny","","","","logon"}
+useragentrules={
+    {"useragent00001","useragentrules","useragent","HTTrack|harvest|audit|dirbuster|pangolin|nmap|sqln|-scan|hydra|Parser|libwww|BBBike|sqlmap","deny","logon"},
+    {"useragent00002","useragentrules","useragent","Nikto|fimap|havij|PycURL|zmeu|BabyKrokodil|netsparker|httperf|bench|w3af|owasp|curl","deny","logon"}
+}
+
 function gethost()
         host = ngx.var.host
         if host == nil or type(host) ~= "string" then
@@ -30,8 +37,23 @@ function fail(service)
     pass
 end
 
+function denyua(rulesname,clientdata)
+    local useragent=clientdata[4]
+    if CCAgent=="on" then
+        for k,v in pairs(rulesname) do
+            local from,to,err=ngx.re.find(useragent,v[4],"imjo")
+            if from then
+                log(v,clientdata,"token","cishu","useragent")
+                ngx.exit(403)
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function denycc(clientdata)
-        lua_use_default_type = "text/html"
+    lua_use_default_type = "text/html"
     if CCDeny=="on" then
         local uri=clientdata[2]
         local host = gethost()
@@ -109,8 +131,6 @@ function denycc(clientdata)
         else
             iplimit:set(clientip,1,ipCCseconds)
         end
-
-
     end
     return false
 end
@@ -219,6 +239,9 @@ function main()
                 clientdata={ip,uri,referer,useragent,cookie,args,post,method,header}
                 if ip ~= "127.0.0.1" then
                     if denycc(clientdata) then
+                        ngx.exit(403)
+                    elseif denyua(useragentrules,clientdata) then
+                        ngx.exit(403)     
                     else
                         return
                     end
