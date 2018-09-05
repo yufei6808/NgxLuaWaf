@@ -1,6 +1,6 @@
 --[[
  * waf for goodID
- * @author yf6808
+ * @author yufei6808@163.com
  * @time 2016-06-08
  * 在nginx.conf加入以下配置
  * lua_shared_dict limit 100m;
