@@ -54,6 +54,7 @@ end
 
 function denycc(clientdata)
     lua_use_default_type = "text/html"
+    deftime = 360
     if CCDeny=="on" then
         local uri=clientdata[2]
         local host = gethost()
@@ -74,6 +75,19 @@ function denycc(clientdata)
             token = clientdata[1]..host..uri
             clientcom = clientdata[1]..host
             clientip = clientdata[1]
+        end
+
+        --sendMessage api
+        local send = string.match(clientdata[2],"sendMessage",1)
+        if send then
+            ngx.header["ID"] = "I know u";
+            deftime = 36000
+            token = clientdata[1]..uri
+            clientcom = clientdata[1]..uri
+            clientip = clientdata[1]..uri
+            CCcount,CCseconds=5,120
+            ipCCcount,ipCCseconds=8,120
+            comCCcount,comCCseconds=10,120
         end
 
         local limit = ngx.shared.limit
